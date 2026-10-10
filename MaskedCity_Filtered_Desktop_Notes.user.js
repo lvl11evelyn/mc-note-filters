@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Masked City Notification Filtering
 // @namespace    https://maskedcity.com/
-// @version      0.1.2
+// @version      0.1.3
 // @description  Adds local category filtering for MaskedCity event notifications while a game tab is open.
 // @author       lvl11evelyn
 // @match        https://maskedcity.com/*
@@ -285,6 +285,37 @@
         padding-left: 24px;
       }
 
+      .mc-filtered-notes-category {
+        display: grid;
+        grid-template-columns: max-content 1fr;
+        align-items: center;
+        gap: 9px;
+      }
+
+      .mc-filtered-notes-category .mc-filtered-notes-choice {
+        border-left: 2px solid #33333399;
+        padding-left: 9px;
+      }
+
+      .mc-filtered-notes-test {
+        min-width: 42px;
+        padding: 2px 6px;
+        border: 1px solid currentColor;
+        background: transparent;
+        color: var(--text-dim, #666);
+        cursor: pointer;
+        font: inherit;
+        font-size: 11px;
+        line-height: 1.2;
+        text-transform: uppercase;
+        transition: all 0s;
+      }
+
+      .mc-filtered-notes-test:hover,
+      .mc-filtered-notes-test:focus-visible {
+        color: var(--text-primary, currentColor);
+      }
+
       .mc-filtered-notes-choice {
         display: flex;
         align-items: center;
@@ -356,10 +387,13 @@
 
       <div class="mc-filtered-notes-grid">
         ${categories.map(([slug, label]) => `
-          <label class="mc-filtered-notes-choice">
-            <input type="checkbox" value="${slug}" data-mc-category ${allowed.has(slug) ? "checked" : ""}>
-            <span>${label}</span>
-          </label>
+          <div class="mc-filtered-notes-category">
+            <button type="button" class="mc-filtered-notes-test" data-mc-test="${slug}" data-mc-test-label="${label}" aria-label="Test ${label} notification">Test</button>
+            <label class="mc-filtered-notes-choice">
+              <input type="checkbox" value="${slug}" data-mc-category ${allowed.has(slug) ? "checked" : ""}>
+              <span>${label}</span>
+            </label>
+          </div>
         `).join("")}
       </div>
 
@@ -449,6 +483,20 @@
     popover.querySelector("[data-mc-none]").addEventListener("click", () => {
       popover.querySelectorAll("[data-mc-category]").forEach((input) => {
         input.checked = false;
+      });
+    });
+
+    popover.querySelectorAll("[data-mc-test]").forEach((testButton) => {
+      testButton.addEventListener("click", () => {
+        const category = testButton.dataset.mcTest || "other";
+        const categoryTitle = testButton.dataset.mcTestLabel || "Other";
+        showLocalNotification({
+          id: `test-${category}-${Date.now()}`,
+          category,
+          categoryTitle,
+          message: `Test notification for ${categoryTitle}.`,
+          url: location.href
+        });
       });
     });
 
