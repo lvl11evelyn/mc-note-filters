@@ -19,14 +19,13 @@ The script runs on:
 
 Masked City's native push notifications are delivered through the site's service worker. Because those notifications are created outside the page context, a userscript cannot directly filter the native push payloads.
 
-This script uses a local replacement approach:
+This script is being built around a local replacement approach:
 
-1. It watches Masked City's `/events` archive while a Masked City tab is open.
-2. It reads each event category from the archive's event tag.
-3. It remembers already-seen events.
-4. It creates a local desktop notification through the userscript manager only when the event category is enabled.
+1. It observes in-page Masked City notification banners while a Masked City tab is open.
+2. It reads each banner's category from the live page markup.
+3. It creates a local desktop notification through the userscript manager only when the event category is enabled.
 
-The script intentionally skips existing archive entries on first run to avoid a notification flood.
+The script does not fetch the event archive or make background requests to Masked City.
 
 ## Setup
 
@@ -67,6 +66,6 @@ The current category set is:
 
 This setting only affects the browser profile currently logged in.
 
-The script expects the Masked City events archive to expose event rows with `.ev-tag` category labels. If the archive markup changes, the parser may need to be updated.
+The live banner observer still needs to be wired to the final in-game notification banner markup. The current version includes the settings UI and category test-fire buttons, but does not fetch `/events`.
 
 Because this is a userscript-based filter, it works best when a Masked City tab is open on the desktop browser.

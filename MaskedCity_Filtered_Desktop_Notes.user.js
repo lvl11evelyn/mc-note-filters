@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Masked City Notification Filtering
 // @namespace    https://maskedcity.com/
-// @version      0.1.3
+// @version      0.2.0
 // @description  Adds local category filtering for MaskedCity event notifications while a game tab is open.
 // @author       lvl11evelyn
 // @match        https://maskedcity.com/*
@@ -11,26 +11,17 @@
 // @updateURL    https://github.com/lvl11evelyn/mc-note-filters/raw/refs/heads/main/MaskedCity_Filtered_Desktop_Notes.user.js
 // @downloadURL  https://github.com/lvl11evelyn/mc-note-filters/raw/refs/heads/main/MaskedCity_Filtered_Desktop_Notes.user.js
 // @run-at       document-idle
-// @grant        GM_xmlhttpRequest
 // @grant        GM_notification
-// @connect      maskedcity.com
-// @connect      www.maskedcity.com
 // ==/UserScript==
 
 (() => {
   "use strict";
 
-  const POLL_INTERVAL_MS = 45_000;
   const SETTINGS_PATH = "/settings";
-  const EVENTS_PATH = "/events";
-  const DEDUPE_VERSION = "stable-row-v2";
 
   const storageKeys = {
     enabled: "mcFilteredNotes.enabled",
-    allowed: "mcFilteredNotes.allowedCategories",
-    seen: "mcFilteredNotes.seenEvents",
-    lastRun: "mcFilteredNotes.lastRun",
-    dedupeVersion: "mcFilteredNotes.dedupeVersion"
+    allowed: "mcFilteredNotes.allowedCategories"
   };
 
   const categories = [
@@ -58,10 +49,6 @@
     "social"
   ];
 
-  const titleToSlug = new Map(
-    categories.map(([slug, label]) => [label.toLowerCase(), slug])
-  );
-
   function getEnabled() {
     return localStorage.getItem(storageKeys.enabled) === "1";
   }
@@ -81,71 +68,6 @@
 
   function saveAllowed(allowed) {
     localStorage.setItem(storageKeys.allowed, JSON.stringify([...allowed]));
-  }
-
-  function getSeen() {
-    try {
-      return new Set(JSON.parse(localStorage.getItem(storageKeys.seen) || "[]"));
-    } catch {
-      return new Set();
-    }
-  }
-
-  function saveSeen(seen) {
-    localStorage.setItem(storageKeys.seen, JSON.stringify([...seen].slice(-300)));
-  }
-
-  function requestPage(path) {
-    return new Promise((resolve, reject) => {
-      GM_xmlhttpRequest({
-        method: "GET",
-        url: new URL(path, location.origin).href,
-        onload: (response) => resolve(response.responseText),
-        onerror: reject
-      });
-    });
-  }
-
-  function normalizeText(value) {
-    return String(value || "").trim().replace(/\s+/g, " ");
-  }
-
-  function eventIdFromRow({ time, categoryTitle, message, url }) {
-    return [time, categoryTitle, message, url].map(normalizeText).join("::");
-  }
-
-  function parseEventMessage(cell, tag) {
-    const clone = cell?.cloneNode(true);
-    clone?.querySelector(".ev-tag")?.remove();
-    return normalizeText(clone?.textContent || "");
-  }
-
-  function parseEventTime(row) {
-    const time = row.querySelector(".event-time-full")?.textContent?.trim() || "";
-    return normalizeText(time);
-  }
-
-  function parseEvents(html) {
-    const doc = new DOMParser().parseFromString(html, "text/html");
-
-    return [...doc.querySelectorAll("table.game-table tbody tr")].map((row) => {
-      const tag = row.querySelector(".ev-tag");
-      const categoryTitle = tag?.getAttribute("title")?.trim() || "Other";
-      const category = titleToSlug.get(categoryTitle.toLowerCase()) || "other";
-      const cell = row.querySelector("td:nth-child(2)");
-      const firstLink = cell?.querySelector("a")?.getAttribute("href") || "/";
-      const url = new URL(firstLink, location.origin).href;
-      const time = parseEventTime(row);
-      const message = parseEventMessage(cell, tag);
-
-      return {
-        id: eventIdFromRow({ time, categoryTitle, message, url }),
-        category,
-        categoryTitle,
-        message,
-        url
-      };
-    });
   }
 
   async function showLocalNotification(event) {
@@ -180,42 +102,6 @@
       location.href = event.url;
       notification.close();
     };
-  }
-
-  async function pollEvents() {
-    if (!getEnabled()) return;
-
-    try {
-      const html = await requestPage(EVENTS_PATH);
-      const events = parseEvents(html);
-      const seen = getSeen();
-      const allowed = getAllowed();
-      const hasCurrentDedupeVersion = localStorage.getItem(storageKeys.dedupeVersion) === DEDUPE_VERSION;
-
-      const isFirstRun = !localStorage.getItem(storageKeys.lastRun);
-      localStorage.setItem(storageKeys.lastRun, String(Date.now()));
-
-      if (!hasCurrentDedupeVersion) {
-        events.forEach((event) => seen.add(event.id));
-        saveSeen(seen);
-        localStorage.setItem(storageKeys.dedupeVersion, DEDUPE_VERSION);
-        return;
-      }
-
-      for (const event of events.reverse()) {
-        if (seen.has(event.id)) continue;
-
-        seen.add(event.id);
-
-        if (!isFirstRun && allowed.has(event.category)) {
-          showLocalNotification(event);
-        }
-      }
-
-      saveSeen(seen);
-    } catch (error) {
-      console.warn("[MaskedCity filtered notes] poll failed", error);
-    }
   }
 
   function injectStyles() {
@@ -409,7 +295,7 @@
       const desc = document.createElement("span");
       desc.id = "mcFilteredNotesDesc";
       desc.className = "mc-filtered-notes-desc";
-      desc.textContent = "To filter notifications, disable this domain in the browser's settings, then enable Filter Notifications here. This setting only affects the browser profile currently logged in.";
+      desc.textContent = "To filter notifications, disable this domain in the browser's settings, then enable Filter Notifications here. This setting only affects the browser profile currently logged in. Filter Notifications observes in-page notification banners only; it does not fetch the event archive.";
       pushDesc.append(desc);
     }
 
@@ -508,11 +394,8 @@
       saveAllowed(nextAllowed);
       setEnabled(popover.querySelector("[data-mc-master]").checked);
       closePopover();
-      pollEvents();
     });
   }
 
   injectSettingsPanel();
-  pollEvents();
-  setInterval(pollEvents, POLL_INTERVAL_MS);
 })();
