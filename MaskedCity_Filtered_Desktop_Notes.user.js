@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Masked City Notification Filtering
 // @namespace    https://maskedcity.com/
-// @version      0.1.0
+// @version      0.1.2
 // @description  Adds local category filtering for MaskedCity event notifications while a game tab is open.
 // @author       lvl11evelyn
 // @match        https://maskedcity.com/*
@@ -23,12 +23,14 @@
   const POLL_INTERVAL_MS = 45_000;
   const SETTINGS_PATH = "/settings";
   const EVENTS_PATH = "/events";
+  const DEDUPE_VERSION = "stable-row-v2";
 
   const storageKeys = {
     enabled: "mcFilteredNotes.enabled",
     allowed: "mcFilteredNotes.allowedCategories",
     seen: "mcFilteredNotes.seenEvents",
-    lastRun: "mcFilteredNotes.lastRun"
+    lastRun: "mcFilteredNotes.lastRun",
+    dedupeVersion: "mcFilteredNotes.dedupeVersion"
   };
 
   const categories = [
@@ -104,10 +106,23 @@
     });
   }
 
-  function eventIdFromRow(row) {
+  function normalizeText(value) {
+    return String(value || "").trim().replace(/\s+/g, " ");
+  }
+
+  function eventIdFromRow({ time, categoryTitle, message, url }) {
+    return [time, categoryTitle, message, url].map(normalizeText).join("::");
+  }
+
+  function parseEventMessage(cell, tag) {
+    const clone = cell?.cloneNode(true);
+    clone?.querySelector(".ev-tag")?.remove();
+    return normalizeText(clone?.textContent || "");
+  }
+
+  function parseEventTime(row) {
     const time = row.querySelector(".event-time-full")?.textContent?.trim() || "";
-    const text = row.textContent.trim().replace(/\s+/g, " ");
-    return `${time}::${text}`;
+    return normalizeText(time);
   }
 
   function parseEvents(html) {
@@ -119,17 +134,16 @@
       const category = titleToSlug.get(categoryTitle.toLowerCase()) || "other";
       const cell = row.querySelector("td:nth-child(2)");
       const firstLink = cell?.querySelector("a")?.getAttribute("href") || "/";
-      const message = cell?.textContent
-        ?.replace(tag?.textContent || "", "")
-        .trim()
-        .replace(/\s+/g, " ") || "";
+      const url = new URL(firstLink, location.origin).href;
+      const time = parseEventTime(row);
+      const message = parseEventMessage(cell, tag);
 
       return {
-        id: eventIdFromRow(row),
+        id: eventIdFromRow({ time, categoryTitle, message, url }),
         category,
         categoryTitle,
         message,
-        url: new URL(firstLink, location.origin).href
+        url
       };
     });
   }
@@ -176,9 +190,17 @@
       const events = parseEvents(html);
       const seen = getSeen();
       const allowed = getAllowed();
+      const hasCurrentDedupeVersion = localStorage.getItem(storageKeys.dedupeVersion) === DEDUPE_VERSION;
 
       const isFirstRun = !localStorage.getItem(storageKeys.lastRun);
       localStorage.setItem(storageKeys.lastRun, String(Date.now()));
+
+      if (!hasCurrentDedupeVersion) {
+        events.forEach((event) => seen.add(event.id));
+        saveSeen(seen);
+        localStorage.setItem(storageKeys.dedupeVersion, DEDUPE_VERSION);
+        return;
+      }
 
       for (const event of events.reverse()) {
         if (seen.has(event.id)) continue;
