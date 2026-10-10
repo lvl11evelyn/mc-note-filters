@@ -1,10 +1,15 @@
 // ==UserScript==
-// @name         MaskedCity Filtered Desktop Notes
-// @namespace    local.maskedcity.filtered-notes
+// @name         Masked City Notification Filtering
+// @namespace    https://maskedcity.com/
 // @version      0.1.0
 // @description  Adds local category filtering for MaskedCity event notifications while a game tab is open.
+// @author       lvl11evelyn
 // @match        https://maskedcity.com/*
 // @match        https://www.maskedcity.com/*
+// @homepageURL  https://github.com/lvl11evelyn/mc-note-filters/blob/main/README.md
+// @supportURL   https://github.com/lvl11evelyn/mc-note-filters/issues
+// @updateURL    https://github.com/lvl11evelyn/mc-note-filters/raw/refs/heads/main/MaskedCity_Filtered_Desktop_Notes.user.js
+// @downloadURL  https://github.com/lvl11evelyn/mc-note-filters/raw/refs/heads/main/MaskedCity_Filtered_Desktop_Notes.user.js
 // @run-at       document-idle
 // @grant        GM_xmlhttpRequest
 // @connect      maskedcity.com
