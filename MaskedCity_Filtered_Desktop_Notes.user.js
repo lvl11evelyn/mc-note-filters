@@ -12,6 +12,7 @@
 // @downloadURL  https://github.com/lvl11evelyn/mc-note-filters/raw/refs/heads/main/MaskedCity_Filtered_Desktop_Notes.user.js
 // @run-at       document-idle
 // @grant        GM_xmlhttpRequest
+// @grant        GM_notification
 // @connect      maskedcity.com
 // @connect      www.maskedcity.com
 // ==/UserScript==
@@ -134,6 +135,20 @@
   }
 
   async function showLocalNotification(event) {
+    if (typeof GM_notification === "function") {
+      GM_notification({
+        title: `MaskedCity: ${event.categoryTitle}`,
+        text: event.message,
+        tag: event.id,
+        timeout: 8000,
+        onclick: () => {
+          window.focus();
+          location.href = event.url;
+        }
+      });
+      return;
+    }
+
     if (Notification.permission === "default") {
       await Notification.requestPermission();
     }
@@ -338,7 +353,7 @@
       const desc = document.createElement("span");
       desc.id = "mcFilteredNotesDesc";
       desc.className = "mc-filtered-notes-desc";
-      desc.textContent = "To filter notifications, disable the domain in the browser's settings and enable Masked City notifications here. This setting only affects the browser profile currently logged in.";
+      desc.textContent = "To filter notifications, disable this domain in the browser's settings, then enable Filter Notifications here. This setting only affects the browser profile currently logged in.";
       pushDesc.append(desc);
     }
 

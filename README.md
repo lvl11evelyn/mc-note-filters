@@ -24,7 +24,7 @@ This script uses a local replacement approach:
 1. It watches Masked City's `/events` archive while a Masked City tab is open.
 2. It reads each event category from the archive's event tag.
 3. It remembers already-seen events.
-4. It creates a local desktop notification only when the event category is enabled.
+4. It creates a local desktop notification through the userscript manager only when the event category is enabled.
 
 The script intentionally skips existing archive entries on first run to avoid a notification flood.
 
@@ -36,13 +36,14 @@ The script intentionally skips existing archive entries on first run to avoid a 
 4. Use **Filter Notifications** to choose the categories you want.
 5. Enable the filter inside the popover.
 6. In your browser's site notification settings, disable Masked City's native desktop notification permission for this browser profile.
-7. Keep Masked City's in-game notification setting enabled.
+7. Allow notifications from your userscript manager if it asks for permission.
+8. Keep Masked City's in-game notification setting enabled.
 
 The intended setup is:
 
 - Phone notifications remain handled by Masked City's native push system.
 - Desktop Firefox suppresses Masked City's native push notifications.
-- This userscript creates filtered replacement notifications on desktop.
+- This userscript creates filtered replacement notifications on desktop through the userscript manager.
 
 ## Categories
 
